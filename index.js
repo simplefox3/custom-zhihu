@@ -16,6 +16,7 @@
 // ==/UserScript==
 
 const domA = (n) => document.querySelectorAll(n)
+const domO = (n) => document.querySelector(n)
 
 const HTML_HOOTS = ['www.zhihu.com', 'zhuanlan.zhihu.com']
 
@@ -291,8 +292,8 @@ const LEAST_HEART = '1000';
 
   const myDialog = {
     open: async () => {
-      $('.pf-mark')[0].style.display = 'block'
-      $('.pf-modal').addClass('pf-modal-show')
+      domO('.pf-mark').style.display = 'block'
+      domO('.pf-modal').classList.add('pf-modal-show')
       const newConfig = await myStorage.get('pfConfig')
       const c = newConfig ? JSON.parse(newConfig) : {}
       if (newConfig !== JSON.stringify(pfConfig)) {
@@ -303,8 +304,8 @@ const LEAST_HEART = '1000';
       myScroll.stop()
     },
     hide: () => {
-      $('.pf-mark')[0].style.display = 'none'
-      $('.pf-modal').removeClass('pf-modal-show')
+      domO('.pf-mark').style.display = 'none'
+      domO('.pf-modal').classList.remove('pf-modal-show')
       myScroll.on()
     },
   }
@@ -351,11 +352,11 @@ const LEAST_HEART = '1000';
     // 开启预览弹窗
     open: function (src, even, isVideo) {
       if (isVideo) {
-        $('.pf-preview-video')[0].src = src
-        $('#my-preview-video')[0].style.display = 'block'
+        domO('.pf-preview-video').src = src
+        domO('#my-preview-video').style.display = 'block'
       } else {
-        $('.pf-preview-img')[0].src = src
-        $('#my-preview-image')[0].style.display = 'block'
+        domO('.pf-preview-img').src = src
+        domO('#my-preview-image').style.display = 'block'
       }
       // 存在even则保存，关闭时候清除
       // 解决浏览GIF时的弹窗问题
@@ -379,8 +380,8 @@ const LEAST_HEART = '1000';
 
   /** 在打开弹窗时候停止页面滚动，只允许弹窗滚动 */
   const myScroll = {
-    stop: () => $('body').addClass('stopScroll'),
-    on: () => $('body').removeClass('stopScroll')
+    stop: () => document.body.classList.add('stopScroll'),
+    on: () => document.body.classList.remove('stopScroll')
   }
 
   /**
@@ -389,7 +390,7 @@ const LEAST_HEART = '1000';
    */
   const myMove = {
     init: function (eventName, configName, name) {
-      const e = $(eventName)[0]
+      const e = domO(eventName)
       // 保存当前元素点击事件
       if (e) {
         this.clicks[configName] = e.click
@@ -465,7 +466,7 @@ const LEAST_HEART = '1000';
       }
     },
     destroy: function (eventName) {
-      const e = $(eventName)[0]
+      const e = domO(eventName)
       e && (e.onmousedown = null)
     },
     isMove: false,
@@ -600,31 +601,33 @@ const LEAST_HEART = '1000';
   }
 
   /** 首页两侧盒子固定 */
+  // TODO: have bug
   const stickyB = {
     scroll: function () {
       window.scrollY > 0 ? stickyB.fixed() : stickyB.inherit()
     },
     fixed: function () {
       // 左侧盒子
-      if (pfConfig.stickyLeft && $(C_STICKY_LEFT_DAD)[0]) {
-        const { offsetWidth, offsetLeft, offsetTop } = $(C_STICKY_LEFT_DAD)[0]
-        $(C_STICKY_LEFT).css({ position: 'fixed', width: offsetWidth, left: offsetLeft, top: offsetTop })
+      if (pfConfig.stickyLeft && domO(C_STICKY_LEFT_DAD)) {
+        const { offsetWidth, offsetLeft, offsetTop } = domO(C_STICKY_LEFT_DAD)
+        console.log(offsetWidth)
+        domO(C_STICKY_LEFT).style = `position: fixed; width: ${offsetWidth}px; left: ${offsetLeft}px; top: ${offsetTop}px`
       } else {
-        $(C_STICKY_LEFT).removeAttr('style', '')
+        domO(C_STICKY_LEFT).style = ''
       }
       // 右侧盒子
-      if (pfConfig.stickyRight && $(C_STICKY_RIGHT_DAD)[0]) {
-        const { offsetWidth, offsetRight, offsetTop } = $(C_STICKY_RIGHT_DAD)[0]
-        $(C_STICKY_RIGHT).css({ position: 'fixed', width: offsetWidth, right: offsetRight, top: offsetTop })
+      if (pfConfig.stickyRight && domO(C_STICKY_RIGHT_DAD)) {
+        const { offsetWidth, offsetRight, offsetTop } = domO(C_STICKY_RIGHT_DAD)
+        domO(C_STICKY_RIGHT).style = `position: fixed; width: ${offsetWidth}px; right: ${offsetRight}px; top: ${offsetTop}px`
       } else {
-        $(C_STICKY_RIGHT).removeAttr('style', '')
-        $(C_STICKY_RIGHT)[0] && ($(C_STICKY_RIGHT)[0].style = 'position: inherit!important')
+        domO(C_STICKY_RIGHT).style = ''
+        domO(C_STICKY_RIGHT) && (domO(C_STICKY_RIGHT).style = 'position: inherit!important')
       }
     },
     inherit: function () {
-      $(C_STICKY_LEFT).removeAttr('style', '')
-      $(C_STICKY_RIGHT).removeAttr('style', '')
-      $(C_STICKY_RIGHT)[0] && ($(C_STICKY_RIGHT)[0].style = 'position: inherit!important')
+      domO(C_STICKY_LEFT).style = ''
+      domO(C_STICKY_RIGHT).style = ''
+      domO(C_STICKY_RIGHT) && (domO(C_STICKY_RIGHT).style = 'position: inherit!important')
     },
   }
 
@@ -724,7 +727,7 @@ const LEAST_HEART = '1000';
         'answerFoldStart': 'answerUnfold'
       }
       const r = nameReverse[name]
-      $(`[name="${r}"]`)[0].checked = false
+      domO(`[name="${r}"]`).checked = false
       pfConfig[r] = false
       myStorage.set('pfConfig', JSON.stringify(pfConfig))
     }
@@ -734,7 +737,7 @@ const LEAST_HEART = '1000';
     const names = ['removeItemAboutAnswer', 'removeItemAboutArticle', 'removeItemAboutVideo']
     let checkedNum = 3
     names.forEach((item) => {
-      $(`[name="${item}"]`)[0].checked && checkedNum--
+      domO(`[name="${item}"]`).checked && checkedNum--
     })
     if (!checkedNum) {
       ev.checked = false
@@ -854,9 +857,9 @@ const LEAST_HEART = '1000';
 
   function onToHomeHref() {
     if (location.host === 'zhuanlan.zhihu.com' && pfConfig.toHomeButtonZhuanlan === 'zhuanlan') {
-      $('.pf-to-home')[0].href = 'https://zhuanlan.zhihu.com'
+      domO('.pf-to-home').href = 'https://zhuanlan.zhihu.com'
     } else if (pfConfig.indexPathnameRedirect && pfConfig.indexPathnameRedirect !== 'n') {
-      $('.pf-to-home')[0].href = `https://www.zhihu.com/${pfConfig.indexPathnameRedirect}`
+      domO('.pf-to-home').href = `https://www.zhihu.com/${pfConfig.indexPathnameRedirect}`
     }
   }
 
@@ -1573,15 +1576,15 @@ const LEAST_HEART = '1000';
     $('.QuestionWaiting').prepend(leftDom)
 
     // 添加EVENT
-    $('.pf-op')[0].onclick = myDialog.open
-    $('.pf-b-close')[0].onclick = myDialog.hide
-    $('.pf-modal-parent .pf-modal-bg')[0].onclick = myDialog.hide
-    $('.pf-export-config')[0].onclick = myConfig.export
-    $('.pf-import-config')[0].onclick = myConfig.import
-    $('.pf-restore-config')[0].onclick = myConfig.restore
-    $('.pf-customize-css-button')[0].onclick = () => myChanger($('[name="customizeCss"]')[0])
-    $('.pf-simple-button')[0].onclick = useSimple
-    $('#PF-SYNC-BLOCK-LIST')[0].onclick = () => syncBlockList(0)
+    domO('.pf-op').onclick = myDialog.open
+    domO('.pf-b-close').onclick = myDialog.hide
+    domO('.pf-modal-parent .pf-modal-bg').onclick = myDialog.hide
+    domO('.pf-export-config').onclick = myConfig.export
+    domO('.pf-import-config').onclick = myConfig.import
+    domO('.pf-restore-config').onclick = myConfig.restore
+    domO('.pf-customize-css-button').onclick = () => myChanger(domO('[name="customizeCss"]'))
+    domO('.pf-simple-button').onclick = useSimple
+    domO('#PF-SYNC-BLOCK-LIST').onclick = () => syncBlockList(0)
 
     domA('.pf-preview').forEach((even) => {
       even.onclick = function () {
@@ -1594,7 +1597,7 @@ const LEAST_HEART = '1000';
     initBlockList()
 
     try {
-      $('.pf-version')[0].innerText = `version: ${GM_info.script.version}`
+      domO('.pf-version').innerText = `version: ${GM_info.script.version}`
     } catch { }
   }
 
