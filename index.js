@@ -613,32 +613,32 @@ const LEAST_HEART = '1000';
   const myLock = {
     append: (e, name) => {
       // 悬浮模块是否固定改为鼠标放置到模块上显示开锁图标 点击即可移动模块
-      if (!e[0]) return
-      !e.children('.my-unlock')[0] && e.append('<i class="iconfont my-unlock">&#xe688;</i>')
-      !e.children('.my-lock')[0] && e.append('<i class="iconfont my-lock">&#xe700;</i>')
-      !e.children('.my-lock-mask')[0] && e.append('<div class="my-lock-mask"></div>')
-      e.children('.my-unlock')[0].onclick = async () => {
+      if (!e) return
+      !e.querySelector('.my-unlock') && e.appendChild(domC('<i class="iconfont my-unlock">&#xe688;</i>'))
+      !e.querySelector('.my-lock') && e.appendChild(domC('<i class="iconfont my-lock">&#xe700;</i>'))
+      !e.querySelector('.my-lock-mask') && e.appendChild(domC('<div class="my-lock-mask"></div>'))
+      e.querySelector('.my-unlock').onclick = async () => {
         pfConfig[name + 'Fixed'] = false
         await myStorage.set('pfConfig', JSON.stringify(pfConfig))
-        e.addClass('my-move-this')
+        e.classList.add('my-move-this')
       }
 
-      e.children('.my-lock')[0].onclick = async () => {
+      e.querySelector('.my-lock').onclick = async () => {
         pfConfig[name + 'Fixed'] = true
         await myStorage.set('pfConfig', JSON.stringify(pfConfig))
-        e.removeClass('my-move-this')
+        e.classList.remove('my-move-this')
       }
 
       // 如果进入页面的时候该项的FIXED为false则添加class
       if (pfConfig[name + 'Fixed'] === false) {
-        e.addClass('my-move-this')
+        e.classList.add('my-move-this')
       }
     },
     remove: (e) => {
-      if (!e[0]) return
-      e.children('.my-unlock')[0] && e.children('.my-unlock').remove()
-      e.children('.my-lock')[0] && e.children('.my-lock').remove()
-      e.children('.my-lock-mask')[0] && e.children('.my-lock-mask').remove()
+      if (!e) return
+      e.querySelector('.my-unlock') && e.querySelector('.my-unlock').parentNode.removeChild(e.querySelector('.my-unlock'))
+      e.querySelector('.my-lock') && e.querySelector('.my-lock').parentNode.removeChild(e.querySelector('.my-lock'))
+      e.querySelector('.my-lock-mask') && e.querySelector('.my-lock-mask').parentNode.removeChild(e.querySelector('.my-lock-mask'))
     }
   }
 
@@ -728,7 +728,7 @@ const LEAST_HEART = '1000';
 
   /** 添加通知提醒框 {title, content, duration} */
   function addNotification(obj) {
-    const { title, content, duration = 300 } = obj
+    const { title, content, duration = 3000 } = obj
     const removeNotification = (ev) => {
       ev && ev.parentNode.removeChild(ev)
     }
@@ -739,7 +739,6 @@ const LEAST_HEART = '1000';
       + `</div>`
     const notification = domC(noEv)
     const notificationParent = domC('<div class="pf-notification"></div>')
-    console.log(notification, !domO('.pf-notification'), noEv)
     if (!domO('.pf-notification')) {
       domO('body').appendChild(notificationParent)
     }
@@ -759,7 +758,7 @@ const LEAST_HEART = '1000';
   }
 
   function doUseThemeDark(isDark) {
-    $('html').attr('data-theme', isDark ? 'dark' : 'light')
+    domO('html').setAttribute('data-theme', isDark ? 'dark' : 'light')
   }
 
   /** 自动收起和展开回答的选项冲突解决 */
@@ -801,18 +800,18 @@ const LEAST_HEART = '1000';
         filterKeywords,
       }
       await myStorage.set('pfConfig', JSON.stringify(pfConfig))
-      $('.pf-filter-keywords').append($(this.evenText(w)))
+      domO('.pf-filter-keywords').appendChild(domC(this.evenText(w)))
       target.value = ''
     },
     del: (event) => {
       if (canOperation('filterKeyword')) {
-        const title = event.attr('data-title')
+        const title = event.getAttribute('data-title')
         const { filterKeywords } = pfConfig
         pfConfig = {
           ...pfConfig,
           filterKeywords: filterKeywords.filter(i => i !== title),
         }
-        event.remove()
+        event.parentNode.removeChild(event)
         myStorage.set('pfConfig', JSON.stringify(pfConfig))
       }
     },
@@ -822,11 +821,11 @@ const LEAST_HEART = '1000';
       filterKeywords.forEach((word) => {
         children += this.evenText(word)
       })
-      $('.pf-filter-keywords')[0] && $('.pf-filter-keywords').empty()
-      $('.pf-filter-keywords').append($(children))
+      domO('.pf-filter-keywords') && (domO('.pf-filter-keywords').innerHTML = '')
+      domO('.pf-filter-keywords').innerHTML = children
       domO('.pf-filter-keywords').onclick = (e) => {
-        if ($(e.target).hasClass('pf-filter-keywords-item-delete')) {
-          this.del($(e.target).parent())
+        if (e.target.classList.contains('pf-filter-keywords-item-delete')) {
+          this.del(e.target.parentNode)
         }
       }
       domO('[name="filterKeyword"]').onchange = (e) => {
@@ -879,7 +878,7 @@ const LEAST_HEART = '1000';
     myLocalC.cacheTitle = document.title
     echoData()
     domO('.pf-modal-content').onchange = (even) => {
-      if ($(even.target).hasClass('pf-i')) {
+      if (even.target.classList.contains('pf-i')) {
         return myChanger(even.target, even.target.type)
       }
     }
@@ -910,7 +909,7 @@ const LEAST_HEART = '1000';
   function changeSuspensionTab() {
     const name = 'suspensionHomeTab'
     cSuspensionStyle(name)
-    const even = $('.Topstory-container .TopstoryTabs')
+    const even = domO('.Topstory-container .TopstoryTabs')
     pfConfig[name] ? myLock.append(even, name) : myLock.remove(even, name)
   }
 
@@ -924,9 +923,9 @@ const LEAST_HEART = '1000';
           if (domO('.AppHeader-inner')) {
             findEvent.header.isFind = true
             domCache.headerDoms = {
-              suspensionFind: { class: '.AppHeader-inner .AppHeader-Tabs', even: $('.AppHeader-inner .AppHeader-Tabs'), index: 1 },
-              suspensionSearch: { class: '.AppHeader-inner .AppHeader-SearchBar', even: $('.AppHeader-inner .AppHeader-SearchBar'), index: 2 },
-              suspensionUser: { class: '.AppHeader-inner .AppHeader-userInfo', even: $('.AppHeader-inner .AppHeader-userInfo'), index: 3 },
+              suspensionFind: { class: '.AppHeader-inner .AppHeader-Tabs', even: domO('.AppHeader-inner .AppHeader-Tabs'), index: 1 },
+              suspensionSearch: { class: '.AppHeader-inner .AppHeader-SearchBar', even: domO('.AppHeader-inner .AppHeader-SearchBar'), index: 2 },
+              suspensionUser: { class: '.AppHeader-inner .AppHeader-userInfo', even: domO('.AppHeader-inner .AppHeader-userInfo'), index: 3 },
             }
           }
           findEvent.header.num++
@@ -943,24 +942,24 @@ const LEAST_HEART = '1000';
       if (pfConfig[name]) {
         // 如果是suspensionSearch则添加展开和收起按钮
         if (name === 'suspensionSearch') {
-          !$(C_ICON)[0] && even.prepend('<i class="iconfont my-search-icon">&#xe600;</i>')
-          !$(C_PICK)[0] && even.append('<i class="iconfont my-search-pick-up">&#xe601;</i>')
-          $(C_ICON)[0] && ($(C_ICON)[0].onclick = () => even.addClass(N_FOCUS))
-          $(C_PICK)[0] && ($(C_PICK)[0].onclick = () => even.removeClass(N_FOCUS))
+          !domO(C_ICON) && even.insertBefore(domC('<i class="iconfont my-search-icon">&#xe600;</i>'), even.firstChild)
+          !domO(C_PICK) && even.appendChild(domC('<i class="iconfont my-search-pick-up">&#xe601;</i>'))
+          domO(C_ICON) && (domO(C_ICON).onclick = () => even.classList.add(N_FOCUS))
+          domO(C_PICK) && (domO(C_PICK).onclick = () => even.classList.remove(N_FOCUS))
         }
         myLock.append(even, name)
-        even.addClass(`position-${name}`)
-        $('body').append(even)
+        even.classList.add(`position-${name}`)
+        domO('body').appendChild(even)
       } else {
         if (name === 'suspensionSearch') {
-          $(C_ICON)[0] && $(C_ICON).remove()
-          $(C_PICK)[0] && $(C_PICK).remove()
-          even.hasClass(N_FOCUS) && even.removeClass(N_FOCUS)
+          domO(C_ICON) && domO(C_ICON).parentNode.removeChild(domO(C_ICON))
+          domO(C_PICK) && domO(C_PICK).parentNode.removeChild(domO(C_PICK))
+          even.classList.contains(N_FOCUS) && even.classList.remove(N_FOCUS)
         }
         myLock.remove(even, name)
-        even.removeClass(`position-${name}`)
-        even.removeAttr('style', '')
-        $('.AppHeader-inner').append(even)
+        even.classList.remove(`position-${name}`)
+        even.style = ''
+        domO('.AppHeader-inner').appendChild(even)
       }
       cSuspensionStyle(name)
     })
@@ -978,12 +977,13 @@ const LEAST_HEART = '1000';
           // 循环定时直到存在创作中心
           if (domO('.GlobalSideBar-creator')) {
             findEvent.creator.isFind = true
+            // TODO: 创作中心和个人回答问题模块合并到一起了 后续删除 positionAnswer
             domCache.positionDoms = {
-              positionAnswer: { class: 'GlobalWrite', even: $('.GlobalWrite') },
-              positionCreation: { class: 'CreatorEntrance', even: $('.GlobalSideBar-creator') },
-              positionTable: { class: 'GlobalSideBar-category', even: $('.GlobalSideBar-category') },
-              positionFavorites: { class: 'GlobalSideBar-navList', even: $('.GlobalSideBar-navList') },
-              positionFooter: { class: 'Footer', even: $('.Footer') },
+              positionAnswer: { class: 'GlobalWrite', even: domO('.GlobalWrite') },
+              positionCreation: { class: 'CreatorEntrance', even: domO('.GlobalSideBar-creator') },
+              positionTable: { class: 'GlobalSideBar-category', even: domO('.GlobalSideBar-category') },
+              positionFavorites: { class: 'GlobalSideBar-navList', even: domO('.GlobalSideBar-navList') },
+              positionFooter: { class: 'Footer', even: domO('.Footer') },
             }
           }
           findEvent.creator.num++
@@ -993,8 +993,8 @@ const LEAST_HEART = '1000';
       return
     }
     // 清除两侧盒子内容
-    $(C_STICKY_LEFT).empty()
-    $(C_STICKY_RIGHT).empty()
+    domO(C_STICKY_LEFT).innerHTML = ''
+    domO(C_STICKY_RIGHT).innerHTML = ''
     const leftDom = []
     const rightDom = []
     // 添加dom
@@ -1008,11 +1008,11 @@ const LEAST_HEART = '1000';
     })
     leftDom.sort((a, b) => a.index - b.index)
     rightDom.sort((a, b) => a.index - b.index)
-    leftDom.forEach(({ even }) => $(C_STICKY_LEFT).append(even))
-    rightDom.forEach(({ even }) => $(C_STICKY_RIGHT).append(even))
+    leftDom.forEach(({ even }) => even && domO(C_STICKY_LEFT).appendChild(even))
+    rightDom.forEach(({ even }) => even && domO(C_STICKY_RIGHT).appendChild(even))
     // 两侧盒子不存在子元素则隐藏
-    $(C_STICKY_LEFT_DAD)[0] && ($(C_STICKY_LEFT_DAD)[0].style.display = $(C_STICKY_LEFT).children().length > 0 ? 'block' : 'none')
-    $(C_STICKY_RIGHT_DAD)[0] && ($(C_STICKY_RIGHT_DAD)[0].style.display = $(C_STICKY_RIGHT).children().length > 0 ? 'block' : 'none')
+    domO(C_STICKY_LEFT_DAD) && (domO(C_STICKY_LEFT_DAD).style.display = domO(C_STICKY_LEFT).childNodes.length > 0 ? 'block' : 'none')
+    domO(C_STICKY_RIGHT_DAD) && (domO(C_STICKY_RIGHT_DAD).style.display = domO(C_STICKY_RIGHT).childNodes.length > 0 ? 'block' : 'none')
     doResizePage()
   }
 
@@ -1021,7 +1021,7 @@ const LEAST_HEART = '1000';
     if (checked) {
       const names = ['removeStoryAnswer', 'removeYanxuanAnswer', 'removeYanxuanRecommend']
       names.forEach((n) => {
-        $(`[name="${n}"]`)[0].checked = checked
+        domO(`[name="${n}"]`).checked = checked
       })
     }
   }
