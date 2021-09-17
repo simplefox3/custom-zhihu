@@ -15,8 +15,49 @@
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js
 // ==/UserScript==
 
+// /** 判断是不是元素结构 */
+// const REP_TEST_DOM = /^\<[\W\w^\>]+\>[\W\w^\<]*\<\/[\W\w^\>]+\>$/
+/** 获取元素内容 */
+const REP_GET_INIT = /(?<=^\<[\W\w^\>]+\>)[\W\w^\<]*(?=\<\/[\W\w^\>]+\>$)/
+/** 获取元素名称 */
+const REP_GET_ELEMENT = /(?<=^\<)[\w-]+\b/
+/** 获取所有的属性 */
+const REP_GET_ALL_ATTR = /(?<=\s)[\w-]+\=['"][\w-\s]+['"]/g
+/** 获取属性名称 */
+const REP_GET_ATTR_NAME = /[\w-]+(?=\=)/
+/** 获取属性内容 */
+const REP_GET_ATTR_CONTENT = /(?<=\=['"])[\w-\s]+(?=['"])/
+// /** 是 id 格式*/
+// const REP_IS_ID = /^#/
+// /** 是 class 格式 */
+// const REP_IS_CLASS = /^\./
+// /** 获取所有并行 class 例 .ddd.ccc 得到['ddd', 'ccc'] */
+// const REP_GET_PARALLEL_CLASS = /(?<=\.)[\w-]+/g
+
 const domA = (n) => document.querySelectorAll(n)
 const domO = (n) => document.querySelector(n)
+
+/** 创建 dom */
+const domC = (select) => {
+  let inner = ''
+  try {
+    inner = select.match(REP_GET_INIT)[0]
+  } catch {
+    inner = ''
+  }
+  const elementName = select.match(REP_GET_ELEMENT)[0]
+  const repFindParent = new RegExp(`\<${elementName}[^\>]+\>`)
+  const parentDom = select.match(repFindParent)[0]
+  const attrs = parentDom.match(REP_GET_ALL_ATTR) || []
+  const element = document.createElement(elementName)
+  attrs.forEach((attr) => {
+    const attrName = attr.match(REP_GET_ATTR_NAME)[0]
+    const attrContent = attr.match(REP_GET_ATTR_CONTENT)[0]
+    element.setAttribute(attrName, attrContent)
+  })
+  element.innerHTML = inner
+  return element
+}
 
 const HTML_HOOTS = ['www.zhihu.com', 'zhuanlan.zhihu.com']
 
@@ -323,7 +364,7 @@ const LEAST_HEART = '1000';
     },
     // 导入配置
     import: async () => {
-      const configImport = $('[name=configImport]')[0].value
+      const configImport = domO('[name=configImport]').value
       pfConfig = JSON.parse(configImport)
       await myStorage.set('pfConfig', JSON.stringify(pfConfig))
       onDocumentStart()
@@ -399,7 +440,7 @@ const LEAST_HEART = '1000';
           if (pfConfig[`${name}Fixed`]) return
           const event = window.event || ev
 
-          const bodyW = $('body')[0].offsetWidth
+          const bodyW = domO('body').offsetWidth
           const windowW = window.innerWidth
           const windowH = window.innerHeight
           const eW = e.offsetWidth
@@ -531,16 +572,16 @@ const LEAST_HEART = '1000';
       if (this.finderI < 30) {
         this.timeout = setTimeout(() => {
           clearTimeout(this.timeout)
-          if ($('#player video').length) {
+          if (domA('#player video').length) {
             this.finderI = 0
             domA('#player>div').forEach((even) => {
-              const downloadButton = $('<i class="iconfont pf-video-download">&#xe608;</i>')
-              const evenLoading = $('<i class="iconfont pf-loading">&#xe605;</i>')
-              downloadButton[0].onclick = () => {
-                const url = downloadButton.parent().parent().find('video')[0].src
+              const downloadButton = domC('<i class="iconfont pf-video-download">&#xe608;</i>')
+              const evenLoading = domC('<i class="iconfont pf-loading">&#xe605;</i>')
+              downloadButton.onclick = () => {
+                const url = downloadButton.parentNode.parentNode.querySelector('video').src
                 if (url) {
-                  downloadButton[0].style.display = 'none'
-                  $(even).append(evenLoading)
+                  downloadButton.style.display = 'none'
+                  even.appendChild(evenLoading)
                   const name = url.match(/(?<=\/)[\d\w-\.]+(?=\?)/)[0]
                   // 使用tamperMonkey的download方法
                   GM_download({
@@ -549,14 +590,15 @@ const LEAST_HEART = '1000';
                     saveAs: true,
                     onload: () => {
                       // blob转换完成，开始下载的回调
-                      downloadButton[0].style.display = 'block'
-                      evenLoading.remove()
+                      downloadButton.style.display = 'block'
+                      evenLoading.parentNode.removeChild(evenLoading)
                     },
                   })
                 }
               }
-              $(even).find('.pf-video-download') && $(even).find('.pf-video-download').remove()
-              $(even).append(downloadButton)
+              const eDownload = even.querySelector('.pf-video-download')
+              eDownload && eDownload.parentNode.removeChild(eDownload)
+              even.appendChild(downloadButton)
             })
 
           } else {
@@ -686,23 +728,24 @@ const LEAST_HEART = '1000';
 
   /** 添加通知提醒框 {title, content, duration} */
   function addNotification(obj) {
-    const { title, content, duration = 3000 } = obj
+    const { title, content, duration = 300 } = obj
     const removeNotification = (ev) => {
-      ev[0] && ev.remove()
+      ev && ev.parentNode.removeChild(ev)
     }
     const noEv = `<div class="pf-notification-item">`
       + `<i class="iconfont pf-close-notification">&#xe61b;</i>`
       + `<div class="pf-notification-title">${title}</div>`
       + (content ? `<div class="pf-notification-content">${content}</div>` : '')
       + `</div>`
-    const notification = $(noEv)
-    const notificationParent = $('<div class="pf-notification"></div>')
-    if (!$('.pf-notification') || !$('.pf-notification')[0]) {
-      $('body').append(notificationParent)
+    const notification = domC(noEv)
+    const notificationParent = domC('<div class="pf-notification"></div>')
+    console.log(notification, !domO('.pf-notification'), noEv)
+    if (!domO('.pf-notification')) {
+      domO('body').appendChild(notificationParent)
     }
-    $('.pf-notification').append(notification)
+    domO('.pf-notification').appendChild(notification)
     domA('.pf-close-notification').forEach((item) => {
-      item.onclick = () => removeNotification($(item).parent())
+      item.onclick = () => removeNotification(item.parentNode)
     })
     setTimeout(() => {
       removeNotification(notification)
@@ -711,8 +754,8 @@ const LEAST_HEART = '1000';
 
   function onChooseHeart() {
     const isSystem = pfConfig.chooseHeart === 'system'
-    $('.pf-heart-system')[0].style.display = isSystem ? 'block' : 'none'
-    $('.pf-heart-self')[0].style.display = !isSystem ? 'flex' : 'none'
+    domO('.pf-heart-system').style.display = isSystem ? 'block' : 'none'
+    domO('.pf-heart-self').style.display = !isSystem ? 'flex' : 'none'
   }
 
   function doUseThemeDark(isDark) {
@@ -781,12 +824,12 @@ const LEAST_HEART = '1000';
       })
       $('.pf-filter-keywords')[0] && $('.pf-filter-keywords').empty()
       $('.pf-filter-keywords').append($(children))
-      $('.pf-filter-keywords')[0].onclick = (e) => {
+      domO('.pf-filter-keywords').onclick = (e) => {
         if ($(e.target).hasClass('pf-filter-keywords-item-delete')) {
           this.del($(e.target).parent())
         }
       }
-      $('[name="filterKeyword"]')[0].onchange = (e) => {
+      domO('[name="filterKeyword"]').onchange = (e) => {
         if (canOperation('filterKeywordAdd')) {
           this.add(e.target)
         }
@@ -835,7 +878,7 @@ const LEAST_HEART = '1000';
   function initData() {
     myLocalC.cacheTitle = document.title
     echoData()
-    $('.pf-modal-content')[0].onchange = (even) => {
+    domO('.pf-modal-content').onchange = (even) => {
       if ($(even.target).hasClass('pf-i')) {
         return myChanger(even.target, even.target.type)
       }
@@ -878,7 +921,7 @@ const LEAST_HEART = '1000';
       findEvent.header.fun = setTimeout(() => {
         clearTimeout(findEvent.header.fun)
         if (findEvent.header.num < 100) {
-          if ($('.AppHeader-inner')[0]) {
+          if (domO('.AppHeader-inner')) {
             findEvent.header.isFind = true
             domCache.headerDoms = {
               suspensionFind: { class: '.AppHeader-inner .AppHeader-Tabs', even: $('.AppHeader-inner .AppHeader-Tabs'), index: 1 },
@@ -933,7 +976,7 @@ const LEAST_HEART = '1000';
         if (findEvent.creator.num < 100) {
           // 如果查找次数小于100次就继续查找
           // 循环定时直到存在创作中心
-          if ($('.GlobalSideBar-creator')[0]) {
+          if (domO('.GlobalSideBar-creator')) {
             findEvent.creator.isFind = true
             domCache.positionDoms = {
               positionAnswer: { class: 'GlobalWrite', even: $('.GlobalWrite') },
