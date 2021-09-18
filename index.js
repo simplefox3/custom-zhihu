@@ -15,24 +15,16 @@
 // @require      https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js
 // ==/UserScript==
 
-// /** 判断是不是元素结构 */
-// const REP_TEST_DOM = /^\<[\W\w^\>]+\>[\W\w^\<]*\<\/[\W\w^\>]+\>$/
 /** 获取元素内容 */
 const REP_GET_INIT = /(?<=^\<[\W\w^\>]+\>)[\W\w^\<]*(?=\<\/[\W\w^\>]+\>$)/
 /** 获取元素名称 */
 const REP_GET_ELEMENT = /(?<=^\<)[\w-]+\b/
 /** 获取所有的属性 */
-const REP_GET_ALL_ATTR = /(?<=\s)[\w-]+\=['"][\w-\s]+['"]/g
+const REP_GET_ALL_ATTR = /(?<=\s)[\w-]+\=['"][^'"]+['"]/g
 /** 获取属性名称 */
 const REP_GET_ATTR_NAME = /[\w-]+(?=\=)/
 /** 获取属性内容 */
-const REP_GET_ATTR_CONTENT = /(?<=\=['"])[\w-\s]+(?=['"])/
-// /** 是 id 格式*/
-// const REP_IS_ID = /^#/
-// /** 是 class 格式 */
-// const REP_IS_CLASS = /^\./
-// /** 获取所有并行 class 例 .ddd.ccc 得到['ddd', 'ccc'] */
-// const REP_GET_PARALLEL_CLASS = /(?<=\.)[\w-]+/g
+const REP_GET_ATTR_CONTENT = /(?<=\=['"])[^'"]+(?=['"])/
 
 const domA = (n) => document.querySelectorAll(n)
 const domO = (n) => document.querySelector(n)
@@ -46,7 +38,7 @@ const domC = (select) => {
     inner = ''
   }
   const elementName = select.match(REP_GET_ELEMENT)[0]
-  const repFindParent = new RegExp(`\<${elementName}[^\>]+\>`)
+  const repFindParent = new RegExp(`\<${elementName}[^\>]*\>`)
   const parentDom = select.match(repFindParent)[0]
   const attrs = parentDom.match(REP_GET_ALL_ATTR) || []
   const element = document.createElement(elementName)
@@ -58,6 +50,38 @@ const domC = (select) => {
   element.innerHTML = inner
   return element
 }
+
+/** 查找所有父元素 */
+const domParents = (el, parentSelector) => {
+  if (parentSelector === undefined) {
+    parentSelector = document
+  }
+  var parents = []
+
+  console.log(el, el.parentNode)
+
+  var p = el.parentNode
+
+  while (p !== parentSelector) {
+    var o = p
+    parents.push(o)
+    if (!o.parentNode) {
+      break
+    }
+    p = o.parentNode
+  }
+  parents.push(parentSelector)
+  return parents
+}
+
+/** 创建 style */
+const styC = (code, id) => {
+  var style = document.createElement('style')
+  id && style.setAttribute('id', id)
+  style.appendChild(document.createTextNode(code))
+  return style
+}
+
 
 const HTML_HOOTS = ['www.zhihu.com', 'zhuanlan.zhihu.com']
 
@@ -652,7 +676,6 @@ const LEAST_HEART = '1000';
       // 左侧盒子
       if (pfConfig.stickyLeft && domO(C_STICKY_LEFT_DAD)) {
         const { offsetWidth, offsetLeft, offsetTop } = domO(C_STICKY_LEFT_DAD)
-        console.log(offsetWidth)
         domO(C_STICKY_LEFT).style = `position: fixed; width: ${offsetWidth}px; left: ${offsetLeft}px; top: ${offsetTop}px`
       } else {
         domO(C_STICKY_LEFT).style = ''
@@ -942,7 +965,7 @@ const LEAST_HEART = '1000';
       if (pfConfig[name]) {
         // 如果是suspensionSearch则添加展开和收起按钮
         if (name === 'suspensionSearch') {
-          !domO(C_ICON) && even.insertBefore(domC('<i class="iconfont my-search-icon">&#xe600;</i>'), even.firstChild)
+          !domO(C_ICON) && even.insertBefore(domC('<i class="iconfont my-search-icon">&#xe600;</i>'), even.childNodes[0])
           !domO(C_PICK) && even.appendChild(domC('<i class="iconfont my-search-pick-up">&#xe601;</i>'))
           domO(C_ICON) && (domO(C_ICON).onclick = () => even.classList.add(N_FOCUS))
           domO(C_PICK) && (domO(C_PICK).onclick = () => even.classList.remove(N_FOCUS))
@@ -1035,8 +1058,8 @@ const LEAST_HEART = '1000';
       'suspensionUser': '.AppHeader-userInfo',
     }
 
-    if ($(`.pf-${name}`)[0]) {
-      $(`.pf-${name}`)[0].style = pfConfig[name] ? 'display: inline-block;' : 'display: none;'
+    if (domO(`.pf-${name}`)) {
+      domO(`.pf-${name}`).style = pfConfig[name] ? 'display: inline-block;' : 'display: none;'
     }
 
     // 如果取消悬浮，则注销掉挂载的move方法
@@ -1045,11 +1068,12 @@ const LEAST_HEART = '1000';
     }
   }
 
+  // TODO: 后续要查看样式是否生效
   function changeCustomCSS() {
-    $('#pf-css-custom') && $('#pf-css-custom').remove()
+    domO('#pf-css-custom') && domO('#pf-css-custom').parentNode.removeChild(domO('#pf-css-custom'))
     if (!pfConfig.customizeCss) return
-    const cssCustom = `<style type="text/css" id="pf-css-custom">${pfConfig.customizeCss}</style>`
-    $('head').append(cssCustom)
+    const cssCustom = styC(pfConfig.customizeCss, 'pf-css-custom')
+    domO('head').appendChild(cssCustom)
   }
 
   /** 修改页面标题 */
@@ -1060,16 +1084,19 @@ const LEAST_HEART = '1000';
   /** 修改页面标题ico */
   function changeTitleIco() {
     if (!ICO[pfConfig.titleIco]) return
-    $('[type="image/x-icon"]')[0] && $('[type="image/x-icon"]').remove()
-    $('#pf-ico')[0] && $('#pf-ico').remove()
-    ICO[pfConfig.titleIco] && $('head').append(ICO[pfConfig.titleIco])
+    const xIcon = domO('[type="image/x-icon"]')
+    const pfIco = domO('#pf-ico')
+    xIcon && xIcon.parentNode.removeChild(xIcon)
+    pfIco && pfIco.parentNode.removeChild(pfIco)
+    ICO[pfConfig.titleIco] && domO('head').appendChild(domC(ICO[pfConfig.titleIco]))
   }
 
+  // TODO: 视频仅显示链接失效 后续修复
   function zoomVideos() {
     if (pfConfig.answerVideoLink !== 'justText') return
     const itemClick = (item) => {
       item.onclick = () => {
-        const src = $(item).find('iframe').attr('src')
+        const src = item.querySelector('iframe').getAttribute('src')
         window.open(src)
       }
     }
@@ -1080,8 +1107,8 @@ const LEAST_HEART = '1000';
   /** 版心CSS方法 */
   const versionCSS = {
     init: function () {
-      const cssVersion = '<style type="text/css" id="pf-css-version">'
-        + this.vHeart()
+      const cssVersion = styC(
+        this.vHeart()
         + this.vImgSize()
         + this.vHidden()
         + this.vShoppingLink()
@@ -1111,10 +1138,12 @@ const LEAST_HEART = '1000';
         + (pfConfig.highlightListItem
           ? `.List-item:focus,.TopstoryItem:focus,.HotItem:focus`
           + `{box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(0, 102, 255, 0.3)!important;outline:none!important;transition:box-shadow 0.3s!important;}`
-          : '')
-        + '</style>'
-      $('#pf-css-version') && $('#pf-css-version').remove()
-      $('head').append(cssVersion)
+          : ''),
+        'pf-css-version'
+      )
+      const cssV = domO('#pf-css-version')
+      cssV && cssV.parentNode.removeChild(cssV)
+      domO('head').appendChild(cssVersion)
 
       pathnameHasFn({
         'question': () => {
@@ -1369,7 +1398,7 @@ const LEAST_HEART = '1000';
 
     if (pfConfig.zoomAnswerImage === 'original') {
       domA('.origin_image').forEach((item) => {
-        const src = $(item).attr('data-original') || $(item).src
+        const src = item.getAttribute('data-original') || item.src
         item.src = src
         item.style = 'max-width: 100%;'
       })
@@ -1392,8 +1421,10 @@ const LEAST_HEART = '1000';
   /** 修改页面背景的css */
   const backgroundCSS = {
     init: function () {
-      $('#pf-css-background') && $('#pf-css-background').remove()
-      $('head').append(`<style type="text/css" id="pf-css-background">${this.chooseBG(pfConfig.colorBackground)}</style>`)
+      const cssBackDom = domO('#pf-css-background')
+      cssBackDom && cssBackDom.parentNode.removeChild(cssBackDom)
+      const cssB = styC(this.chooseBG(pfConfig.colorBackground), 'pf-css-background')
+      domO('head').appendChild(cssB)
     },
     chooseBG: function (bg) {
       return pfConfig.isUseThemeDark
@@ -1609,14 +1640,17 @@ const LEAST_HEART = '1000';
 
   /** 注入弹窗元素和默认css */
   function initHTML() {
-    const htmlModal = $(INNER_HTML)
-    const openButton = '<div class="pf-op"><i class="pf-open-modal iconfont">&#xe603;</i></div>'
-    $('body').append(openButton)
-    $('body').append(htmlModal)
+    const htmlModal = domC('<span></span>')
+    htmlModal.innerHTML = INNER_HTML
+    const openButton = domC('<div class="pf-op"><i class="pf-open-modal iconfont">&#xe603;</i></div>')
+    domO('body').appendChild(openButton)
+    domO('body').appendChild(htmlModal)
     // 在首页加入左侧模块 用于调整创作中心 收藏夹等模块元素
-    const leftDom = $('<div class="pf-left-container" style="display: none; flex: 1; margin-right: 10px;"><div class="Sticky"></div></div>')
-    $('.Topstory-container').prepend(leftDom)
-    $('.QuestionWaiting').prepend(leftDom)
+    const leftDom = domC('<div class="pf-left-container" style="display: none; flex: 1; margin-right: 10px;"><div class="Sticky"></div></div>')
+    const dTC = domO('.Topstory-container')
+    dTC && dTC.insertBefore(leftDom, dTC.childNodes[0])
+    const dQ = domO('.QuestionWaiting')
+    dQ && dQ.insertBefore(leftDom, dQ.childNodes[0])
 
     // 添加EVENT
     domO('.pf-op').onclick = myDialog.open
@@ -1661,12 +1695,12 @@ const LEAST_HEART = '1000';
     removeBlockUserContentList.forEach((info) => {
       children += eventBlockHTML(info)
     })
-    $('#PF-BLOCK-LIST')[0] && $('#PF-BLOCK-LIST').empty()
-    $('#PF-BLOCK-LIST').append(children)
-    $('#PF-BLOCK-LIST')[0].onclick = function (event) {
+    domO('#PF-BLOCK-LIST') && (domO('#PF-BLOCK-LIST').innerHTML = '')
+    domO('#PF-BLOCK-LIST').innerHTML = children
+    domO('#PF-BLOCK-LIST').onclick = function (event) {
       if (/pf-remove-block/.test(event.target.className)) {
-        const item = $(event.target).parent()
-        const info = item[0].dataset.info ? JSON.parse(item[0].dataset.info) : {}
+        const item = event.target.parentNode
+        const info = item.dataset.info ? JSON.parse(item.dataset.info) : {}
         const isUse = confirm('取消屏蔽之后，对方将可以：关注你、给你发私信、向你提问、评论你的答案、邀请你回答问题。')
         isUse && deleteFetchActionsBlock(info)
       }
@@ -1677,7 +1711,7 @@ const LEAST_HEART = '1000';
   function addBlockItem(info) {
     pfConfig.removeBlockUserContentList.push({ ...info })
     myStorage.set('pfConfig', JSON.stringify(pfConfig))
-    $('#PF-BLOCK-LIST').append($(eventBlockHTML(info)))
+    domO('#PF-BLOCK-LIST').appendChild(domC(eventBlockHTML(info)))
   }
 
   /** 移除屏蔽用户 */
@@ -1687,16 +1721,17 @@ const LEAST_HEART = '1000';
       const blockList = [...pfConfig.removeBlockUserContentList]
       blockList.splice(itemIndex, 1)
       pfConfig.removeBlockUserContentList = blockList
-      $(`.pf-block-id-${info.id}`)[0] && ($(`.pf-block-id-${info.id}`)[0].style.display = 'none')
+      const eventB = domO(`.pf-block-id-${info.id}`)
+      eventB && (eventB.style.display = 'none')
       myStorage.set('pfConfig', JSON.stringify(pfConfig))
     }
   }
 
   /** 同步黑名单列表 */
   function syncBlockList(offset = 0, l = []) {
-    !l.length && $('#PF-BLOCK-LIST').empty()
-    $('#PF-SYNC-BLOCK-LIST')[0].innerHTML = '<i class="iconfont pf-loading-in-button">&#xe605;</i>'
-    $('#PF-SYNC-BLOCK-LIST')[0].disabled = true
+    !l.length && (domO('#PF-BLOCK-LIST').innerHTML = '')
+    domO('#PF-SYNC-BLOCK-LIST').innerHTML = '<i class="iconfont pf-loading-in-button">&#xe605;</i>'
+    domO('#PF-SYNC-BLOCK-LIST').disabled = true
     const limit = 20
     fetch(`/api/v3/settings/blocked_users?offset=${offset}&limit=${limit}`, {
       method: 'GET',
@@ -1715,15 +1750,15 @@ const LEAST_HEART = '1000';
           urlToken: url_token
         }
         l.push(info)
-        $('#PF-BLOCK-LIST').append($(eventBlockHTML(info)))
+        domO('#PF-BLOCK-LIST').appendChild(domC(eventBlockHTML(info)))
       })
       if (!paging.is_end) {
         syncBlockList((offset + 1) * limit, l)
       } else {
         pfConfig.removeBlockUserContentList = l
         myStorage.set('pfConfig', JSON.stringify(pfConfig))
-        $('#PF-SYNC-BLOCK-LIST')[0].innerHTML = '同步黑名单'
-        $('#PF-SYNC-BLOCK-LIST')[0].disabled = false
+        domO('#PF-SYNC-BLOCK-LIST').innerHTML = '同步黑名单'
+        domO('#PF-SYNC-BLOCK-LIST').disabled = false
         addNotification({ title: '黑名单同步完成' })
       }
     })
@@ -1738,21 +1773,21 @@ const LEAST_HEART = '1000';
         + `<span style="color: #111f2c">${BACKGROUND_CONFIG[item].name}</span>`
         + `</div>`
         + `</label>`
-      return $(d)
+      return domC(d)
     }
-    const domParent = $('<block></block>')
-    Object.keys(BACKGROUND_CONFIG).forEach((item) => domParent.append(dom(item)))
-    $(`[name="colorsBackground"]`).empty()
-    $(`[name="colorsBackground"]`)[0] && $(`[name="colorsBackground"]`).append(domParent)
+    const domParent = domC('<block></block>')
+    Object.keys(BACKGROUND_CONFIG).forEach((item) => domParent.appendChild(dom(item)))
+    const eColor = domO(`[name="colorsBackground"]`)
+    eColor && (eColor.innerHTML = domParent)
   }
 
   let eachIndex = 0
   /** 删除回答 */
   function storyHidden() {
     sortAnswer()
-    if ($('.QuestionAnswer-content')[0]) {
-      pfConfig.answerItemCreatedAndModifiedTime && addTimes($('.QuestionAnswer-content'))
-      pfConfig.showBlockUser && addBlockUser($('.QuestionAnswer-content'))
+    if (domO('.QuestionAnswer-content')) {
+      pfConfig.answerItemCreatedAndModifiedTime && addTimes(domO('.QuestionAnswer-content'))
+      pfConfig.showBlockUser && addBlockUser(domO('.QuestionAnswer-content'))
     }
 
     const isTrue = (() => {
@@ -1766,27 +1801,26 @@ const LEAST_HEART = '1000';
     })()
 
     if (!isTrue) return
-    const events = $('.List-item')
+    const events = domA('.List-item')
     let lessNum = 0 // 每次减去的列表内容数量
     // 使用此循环方式是为了新的元素添加后从后面开始循环，减少遍历数量
     for (let i = eachIndex, len = events.length; i < len; i++) {
       const that = events[i]
       if (that) {
-        const eventThat = $(that)
         if (pfConfig.removeZhihuOfficial) {
           // 知乎官方账号优先级最高
-          const label = eventThat.find('.AuthorInfo-name .css-n99yhz').attr('aria-label')
+          const label = that.querySelector('.AuthorInfo-name .css-n99yhz').getAttribute('aria-label')
           if (/知乎[\s]*官方帐号/.test(label)) {
-            eventThat[0].style.display = 'none'
+            that.style.display = 'none'
             lessNum++
             GM_log(`[customize]已删除一条知乎官方帐号的回答`)
           }
         } else {
-          const dataZop = eventThat.children('.AnswerItem').attr('data-zop')
+          const dataZop = that.querySelector('.AnswerItem').getAttribute('data-zop')
           REMOVE_ANSWER_BY_NAME.forEach((item) => {
             const reg = new RegExp(`['"]authorName['":]*` + item.name)
             if (pfConfig[item.id] && reg.test(dataZop)) {
-              eventThat[0].style.display = 'none'
+              that.style.display = 'none'
               lessNum++
               GM_log(`[customize]已删除一条${item.name}的回答`)
             }
@@ -1795,11 +1829,11 @@ const LEAST_HEART = '1000';
 
         // 删除选自盐选专栏的回答
         if (pfConfig.removeFromYanxuan) {
-          const formYanxuan = eventThat.find('.KfeCollection-OrdinaryLabel-content')[0] || eventThat.find('.KfeCollection-IntroCard p:first-of-type')[0]
+          const formYanxuan = that.querySelector('.KfeCollection-OrdinaryLabel-content') || that.querySelector('.KfeCollection-IntroCard p:first-of-type')
           if (formYanxuan) {
             const formYanxuanText = formYanxuan ? formYanxuan.innerText : ''
             if (/盐选专栏/.test(formYanxuanText)) {
-              eventThat[0].style.display = 'none'
+              that.style.display = 'none'
               lessNum++
               GM_log(`[customize]已删除一条来自盐选专栏的回答`)
             }
@@ -1808,43 +1842,42 @@ const LEAST_HEART = '1000';
 
         // 自动展开所有回答
         if (pfConfig.answerUnfold) {
-          const unFoldButton = eventThat.find('.ContentItem-expandButton')
-          if (unFoldButton && unFoldButton[0] && !eventThat.hasClass('is-unfold')) {
-            unFoldButton[0].click()
-            eventThat.addClass('is-unfold')
+          const unFoldButton = that.querySelector('.ContentItem-expandButton')
+          if (unFoldButton && !that.classList.contains('is-unfold')) {
+            unFoldButton.click()
+            that.classList.add('is-unfold')
             lessNum++
           }
         }
 
         // 默认收起所有长回答
         if (pfConfig.answerFoldStart) {
-          const foldButton = eventThat.find('.RichContent-collapsedText')
-          const unFoldButton = eventThat.find('.ContentItem-expandButton')
-          if (foldButton && foldButton[0] && !eventThat.hasClass('is-fold') && that.offsetHeight > 939) {
-            foldButton[0].click()
-            eventThat.addClass('is-fold')
+          const foldButton = that.querySelector('.RichContent-collapsedText')
+          const unFoldButton = that.querySelector('.ContentItem-expandButton')
+          if (foldButton && !that.classList.contains('is-fold') && that.offsetHeight > 939) {
+            foldButton.click()
+            that.classList.add('is-fold')
             lessNum++
-          } else if (unFoldButton && unFoldButton[0] && !eventThat.hasClass('is-fold')) {
-            eventThat.addClass('is-fold')
+          } else if (unFoldButton && unFoldButton[0] && !that.classList.contains('is-fold')) {
+            that.classList.add('is-fold')
             lessNum++
           }
         }
 
         // 如果 不再显示「已屏蔽」用户发布的内容 为 true 并且列表不为 0
         if (pfConfig.removeBlockUserContent && pfConfig.removeBlockUserContentList.length) {
-          const aContent = eventThat.find('.AnswerItem').attr('data-za-extra-module')
-            ? JSON.parse(eventThat.find('.AnswerItem').attr('data-za-extra-module')).card.content
-            : {}
+          const aCAtt = that.querySelector('.AnswerItem').getAttribute('data-za-extra-module')
+          const aContent = aCAtt ? JSON.parse(aCAtt).card.content : {}
           const userId = aContent.author_member_hash_id || ''
           if (pfConfig.removeBlockUserContentList.find(i => i.id === userId)) {
-            eventThat[0].style.display = 'none'
+            that.style.display = 'none'
             lessNum++
             GM_log(`[customize]已屏蔽一个用户的回答`)
           }
         }
 
-        pfConfig.answerItemCreatedAndModifiedTime && addTimes(eventThat)
-        pfConfig.showBlockUser && addBlockUser(eventThat)
+        pfConfig.answerItemCreatedAndModifiedTime && addTimes(that)
+        pfConfig.showBlockUser && addBlockUser(that)
 
         if (i === events.length - 1) {
           eachIndex = i - lessNum - 1
@@ -1877,26 +1910,30 @@ const LEAST_HEART = '1000';
     const canFindTargeted = (e) => {
       let finded = false
       listTargetClass.forEach((item) => {
-        $(e).hasClass(item) && (finded = true)
+        domO(e).classList.contains(item) && (finded = true)
       })
       return finded
     }
-    $('.Topstory-recommend')[0] && ($('.Topstory-recommend')[0].onclick = function (event) {
+    domO('.Topstory-recommend') && (domO('.Topstory-recommend').onclick = function (event) {
       // 点击外置[不感兴趣]按钮
       if (pfConfig.listOutPutNotInterested && event.target.className === 'ContentItem-title') {
         // 使用pointer-events: none 和伪元素、子元素使用pointer-events:auto来获取点击
         let dataZop = {}
         try {
-          dataZop = JSON.parse($(event.target).parents('.ContentItem').attr('data-zop'))
+          dataZop = JSON.parse(domParents(event.target, '.ContentItem')[0].getAttribute('data-zop'))
+          console.log('dataZop', dataZop)
         } catch { }
+
+        console.log(dataZop)
         const { itemId = '', type = '' } = dataZop
         doFetchUninterestv2({ id: itemId, type })
-        $(event.target).parents('.TopstoryItem')[0].style.display = 'none'
+        console.log(domParents(event.target, '.TopstoryItem'))
+        domParents(event.target, '.TopstoryItem')[0].style.display = 'none'
       }
 
       // 列表内容展示更多
       if (canFindTargeted(event.target)) {
-        const conEvent = $(event.target).parents('.ContentItem')
+        const conEvent = domParents(event.target, '.ContentItem')[0]
         setTimeout(() => {
           pfConfig.listItemCreatedAndModifiedTime && addTimes(conEvent)
           pfConfig.showBlockUser && addBlockUser(conEvent)
@@ -1907,37 +1944,39 @@ const LEAST_HEART = '1000';
 
   /** 问题添加时间 */
   function addTimes(event) {
-    event.find('.pf-list-item-time')[0] && event.find('.pf-list-item-time').remove()
-    const crTime = event.find('[itemprop="dateCreated"]')[0] ? event.find('[itemprop="dateCreated"]')[0].content : ''
-    const puTime = event.find('[itemprop="datePublished"]')[0] ? event.find('[itemprop="datePublished"]')[0].content : ''
-    const muTime = event.find('[itemprop="dateModified"]')[0] ? event.find('[itemprop="dateModified"]')[0].content : ''
+    const eTime = event.querySelector('.pf-list-item-time')
+    eTime && eTime.parentNode.removeChild(eTime)
+    const crTime = event.querySelector('[itemprop="dateCreated"]') ? event.querySelector('[itemprop="dateCreated"]').content : ''
+    const puTime = event.querySelector('[itemprop="datePublished"]') ? event.querySelector('[itemprop="datePublished"]').content : ''
+    const muTime = event.querySelector('[itemprop="dateModified"]') ? event.querySelector('[itemprop="dateModified"]').content : ''
     const created = Util.formatDate(crTime || puTime)
     const modified = Util.formatDate(muTime)
     if (!created) return
     const eventTime = `<div class="pf-list-item-time" style="line-height: 24px;padding-top: 6px;">`
       + `<div>创建时间：${created}</div><div>最后修改时间：${modified}</div>`
       + `</div>`
-    event.find('.ContentItem-meta').append(eventTime)
+    event.querySelector('.ContentItem-meta').appendChild(eventTime)
   }
 
   /** 添加「屏蔽用户」按钮 */
   function addBlockUser(event) {
-    event.find('.pf-block-user')[0] && event.find('.pf-block-user').remove()
+    const eUser = event.querySelector('.pf-block-user')
+    eUser && eUser.parentNode.removeChild(eUser)
     try {
-      const userUrl = event.find('.AnswerItem-authorInfo>.AuthorInfo>meta[itemprop="url"]')[0].content
-      const userName = event.find('.AnswerItem-authorInfo>.AuthorInfo>meta[itemprop="name"]')[0].content
-      const avatar = event.find('.AnswerItem-authorInfo>.AuthorInfo>meta[itemprop="image"]')[0].content
-      const aContent = event.find('.AnswerItem').attr('data-za-extra-module')
-        ? JSON.parse(event.find('.AnswerItem').attr('data-za-extra-module')).card.content
+      const userUrl = event.querySelector('.AnswerItem-authorInfo>.AuthorInfo>meta[itemprop="url"]').content
+      const userName = event.querySelector('.AnswerItem-authorInfo>.AuthorInfo>meta[itemprop="name"]').content
+      const avatar = event.querySelector('.AnswerItem-authorInfo>.AuthorInfo>meta[itemprop="image"]').content
+      const aContent = event.querySelector('.AnswerItem').getAttribute('data-za-extra-module')
+        ? JSON.parse(event.querySelector('.AnswerItem').getAttribute('data-za-extra-module')).card.content
         : {}
       const userId = aContent.author_member_hash_id || ''
       if (!userUrl.replace(/https:\/\/www.zhihu.com\/people\//, '')) return
-      const buttonBlockUser = $('<button class="pf-block-user">屏蔽用户</button>')
-      buttonBlockUser[0].onclick = function () {
+      const buttonBlockUser = domC('<button class="pf-block-user">屏蔽用户</button>')
+      buttonBlockUser.onclick = function () {
         const isUse = confirm(`是否要屏蔽${userName}？\n屏蔽后，对方将不能关注你、向你发私信、评论你的实名回答、使用「@」提及你、邀请你回答问题，但仍然可以查看你的公开信息。\n如果开启了「不再显示已屏蔽用户发布的内容」那么也不会看到对方发布的回答`)
         isUse && doFetchActionsBlock(userUrl, userName, userId, avatar)
       }
-      event.find('.AnswerItem-authorInfo>.AuthorInfo').append(buttonBlockUser)
+      event.querySelector('.AnswerItem-authorInfo>.AuthorInfo').appendChild(buttonBlockUser)
     } catch { }
   }
 
